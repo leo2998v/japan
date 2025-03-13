@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Práctica Hiragana, Katakana y Kanji</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  /* Animación para mover ligeramente los caracteres */
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  .floating-character {
+    animation: float 3s ease-in-out infinite;
+    font-size: 6rem; /* Tamaño aún más grande para los caracteres */
+  }
+
+  /* Efectos adicionales */
+  .button-effect {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  }
+
+  .button-effect:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .feedback-message {
+    transition: opacity 0.5s ease-in-out;
+  }
+
+  .feedback-message.hidden {
+    opacity: 0;
+  }
+
+  .feedback-message:not(.hidden) {
+    opacity: 1;
+  }
+</style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center">
+<!-- Contenedor principal -->
+<div class="text-center p-8 rounded-lg shadow-lg bg-gray-800 max-w-4xl w-full">
+<h1 class="text-5xl font-bold mb-6">Practica Hiragana, Katakana y Kanji</h1>
+<!-- Caracter actual -->
+<div class="mb-6">
+<p class="floating-character text-7xl font-bold" id="current-character">あ</p>
+<p class="text-2xl mt-2">Selecciona la pronunciación correcta:</p>
+</div>
+<!-- Opciones de respuesta -->
+<div class="grid grid-cols-2 gap-8 mb-6" id="options-container">
+<!-- Las opciones se generan dinámicamente -->
+</div>
+<!-- Mensaje de retroalimentación -->
+<div id="feedback-message" class="text-3xl mb-4 hidden feedback-message"></div>
+<!-- Puntuación y errores -->
+<div class="mb-6">
+<p class="text-3xl">Puntuación: <span id="score">0</span></p>
+<p class="text-3xl">Errores: <span id="errors">0</span></p>
+</div>
+<!-- Botón para reiniciar -->
+<button id="restart-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-6 px-12 rounded button-effect hidden">
+Reiniciar
+</button>
+</div>
+<script>
+// Datos de hiragana, katakana y kanji
+const allCharacters = [
+  // Hiragana
+  { character: 'あ', pronunciation: 'a' },
+  { character: 'い', pronunciation: 'i' },
+  { character: 'う', pronunciation: 'u' },
+  { character: 'え', pronunciation: 'e' },
+  { character: 'お', pronunciation: 'o' },
+  { character: 'か', pronunciation: 'ka' },
+  { character: 'き', pronunciation: 'ki' },
+  { character: 'く', pronunciation: 'ku' },
+  { character: 'け', pronunciation: 'ke' },
+  { character: 'こ', pronunciation: 'ko' },
+  { character: 'さ', pronunciation: 'sa' },
+  { character: 'し', pronunciation: 'shi' },
+  { character: 'す', pronunciation: 'su' },
+  { character: 'せ', pronunciation: 'se' },
+  { character: 'そ', pronunciation: 'so' },
+  { character: 'た', pronunciation: 'ta' },
+  { character: 'ち', pronunciation: 'chi' },
+  { character: 'つ', pronunciation: 'tsu' },
+  { character: 'て', pronunciation: 'te' },
+  { character: 'と', pronunciation: 'to' },
+  { character: 'な', pronunciation: 'na' },
+  { character: 'に', pronunciation: 'ni' },
+  { character: 'ぬ', pronunciation: 'nu' },
+  { character: 'ね', pronunciation: 'ne' },
+  { character: 'の', pronunciation: 'no' },
+  { character: 'は', pronunciation: 'ha' },
+  { character: 'ひ', pronunciation: 'hi' },
+  { character: 'ふ', pronunciation: 'fu' },
+  { character: 'へ', pronunciation: 'he' },
+  { character: 'ほ', pronunciation: 'ho' },
+  { character: 'ま', pronunciation: 'ma' },
+  { character: 'み', pronunciation: 'mi' },
+  { character: 'む', pronunciation: 'mu' },
+  { character: 'め', pronunciation: 'me' },
+  { character: 'も', pronunciation: 'mo' },
+  { character: 'や', pronunciation: 'ya' },
+  { character: 'ゆ', pronunciation: 'yu' },
+  { character: 'よ', pronunciation: 'yo' },
+  { character: 'ら', pronunciation: 'ra' },
+  { character: 'り', pronunciation: 'ri' },
+  { character: 'る', pronunciation: 'ru' },
+  { character: 'れ', pronunciation: 're' },
+  { character: 'ろ', pronunciation: 'ro' },
+  { character: 'わ', pronunciation: 'wa' },
+  { character: 'を', pronunciation: 'wo' },
+  { character: 'ん', pronunciation: 'n' },
+  // Katakana
+  { character: 'ア', pronunciation: 'a' },
+  { character: 'イ', pronunciation: 'i' },
+  { character: 'ウ', pronunciation: 'u' },
+  { character: 'エ', pronunciation: 'e' },
+  { character: 'オ', pronunciation: 'o' },
+  { character: 'カ', pronunciation: 'ka' },
+  { character: 'キ', pronunciation: 'ki' },
+  { character: 'ク', pronunciation: 'ku' },
+  { character: 'ケ', pronunciation: 'ke' },
+  { character: 'コ', pronunciation: 'ko' },
+  { character: 'サ', pronunciation: 'sa' },
+  { character: 'シ', pronunciation: 'shi' },
+  { character: 'ス', pronunciation: 'su' },
+  { character: 'セ', pronunciation: 'se' },
+  { character: 'ソ', pronunciation: 'so' },
+  { character: 'タ', pronunciation: 'ta' },
+  { character: 'チ', pronunciation: 'chi' },
+  { character: 'ツ', pronunciation: 'tsu' },
+  { character: 'テ', pronunciation: 'te' },
+  { character: 'ト', pronunciation: 'to' },
+  { character: 'ナ', pronunciation: 'na' },
+  { character: 'ニ', pronunciation: 'ni' },
+  { character: 'ヌ', pronunciation: 'nu' },
+  { character: 'ネ', pronunciation: 'ne' },
+  { character: 'ノ', pronunciation: 'no' },
+  { character: 'ハ', pronunciation: 'ha' },
+  { character: 'ヒ', pronunciation: 'hi' },
+  { character: 'フ', pronunciation: 'fu' },
+  { character: 'ヘ', pronunciation: 'he' },
+  { character: 'ホ', pronunciation: 'ho' },
+  { character: 'マ', pronunciation: 'ma' },
+  { character: 'ミ', pronunciation: 'mi' },
+  { character: 'ム', pronunciation: 'mu' },
+  { character: 'メ', pronunciation: 'me' },
+  { character: 'モ', pronunciation: 'mo' },
+  { character: 'ヤ', pronunciation: 'ya' },
+  { character: 'ユ', pronunciation: 'yu' },
+  { character: 'ヨ', pronunciation: 'yo' },
+  { character: 'ラ', pronunciation: 'ra' },
+  { character: 'リ', pronunciation: 'ri' },
+  { character: 'ル', pronunciation: 'ru' },
+  { character: 'レ', pronunciation: 're' },
+  { character: 'ロ', pronunciation: 'ro' },
+  { character: 'ワ', pronunciation: 'wa' },
+  { character: 'ヲ', pronunciation: 'wo' },
+  { character: 'ン', pronunciation: 'n' },
+  // Kanji (150 más importantes)
+  { character: '一', pronunciation: 'ichi', meaning: 'Uno' },
+  { character: '二', pronunciation: 'ni', meaning: 'Dos' },
+  { character: '三', pronunciation: 'san', meaning: 'Tres' },
+  { character: '四', pronunciation: 'shi', meaning: 'Cuatro' },
+  { character: '五', pronunciation: 'go', meaning: 'Cinco' },
+  { character: '六', pronunciation: 'roku', meaning: 'Seis' },
+  { character: '七', pronunciation: 'shichi', meaning: 'Siete' },
+  { character: '八', pronunciation: 'hachi', meaning: 'Ocho' },
+  { character: '九', pronunciation: 'kyuu', meaning: 'Nueve' },
+  { character: '十', pronunciation: 'juu', meaning: 'Diez' },
+  { character: '日', pronunciation: 'nichi', meaning: 'Día/Sol' },
+  { character: '月', pronunciation: 'getsu', meaning: 'Mes/Luna' },
+  { character: '火', pronunciation: 'hi', meaning: 'Fuego' },
+  { character: '水', pronunciation: 'mizu', meaning: 'Agua' },
+  { character: '木', pronunciation: 'ki', meaning: 'Árbol' },
+  { character: '金', pronunciation: 'kin', meaning: 'Metal/Dinero' },
+  { character: '土', pronunciation: 'do', meaning: 'Tierra' },
+  { character: '年', pronunciation: 'nen', meaning: 'Año' },
+  { character: '人', pronunciation: 'hito', meaning: 'Persona' },
+  { character: '大', pronunciation: 'dai', meaning: 'Grande' },
+  { character: '小', pronunciation: 'shou', meaning: 'Pequeño' },
+  { character: '山', pronunciation: 'yama', meaning: 'Montaña' },
+  { character: '川', pronunciation: 'kawa', meaning: 'Río' },
+  { character: '田', pronunciation: 'ta', meaning: 'Campo de arroz' },
+  { character: '上', pronunciation: 'ue', meaning: 'Arriba' },
+  { character: '下', pronunciation: 'shita', meaning: 'Abajo' },
+  { character: '中', pronunciation: 'naka', meaning: 'Medio/Centro' },
+  { character: '左', pronunciation: 'hidari', meaning: 'Izquierda' },
+  { character: '右', pronunciation: 'migi', meaning: 'Derecha' },
+  { character: '前', pronunciation: 'mae', meaning: 'Delante' },
+  { character: '後', pronunciation: 'ato', meaning: 'Detrás' },
+  { character: '見', pronunciation: 'mi', meaning: 'Ver' },
+  { character: '行', pronunciation: 'iku', meaning: 'Ir' },
+  { character: '出', pronunciation: 'de', meaning: 'Salir' },
+  { character: '入', pronunciation: 'iri', meaning: 'Entrar' },
+  { character: '学', pronunciation: 'gaku', meaning: 'Estudio' },
+  { character: '生', pronunciation: 'sei', meaning: 'Vida/Alumno' },
+  { character: '先', pronunciation: 'saki', meaning: 'Antes/Futuro' },
+  { character: '本', pronunciation: 'hon', meaning: 'Libro' },
+  { character: '校', pronunciation: 'kou', meaning: 'Escuela' },
+  { character: '国', pronunciation: 'kuni', meaning: 'País' },
+  { character: '市', pronunciation: 'shi', meaning: 'Ciudad' },
+  { character: '長', pronunciation: 'naga', meaning: 'Largo/Jefe' },
+  { character: '子', pronunciation: 'ko', meaning: 'Niño' },
+  { character: '女', pronunciation: 'onna', meaning: 'Mujer' },
+  { character: '男', pronunciation: 'otoko', meaning: 'Hombre' },
+  { character: '高', pronunciation: 'takai', meaning: 'Alto' },
+  { character: '低', pronunciation: 'hikui', meaning: 'Bajo' },
+  { character: '新', pronunciation: 'shin', meaning: 'Nuevo' },
+  { character: '古', pronunciation: 'furui', meaning: 'Viejo' },
+  { character: '明', pronunciation: 'mei', meaning: 'Claro/Brillante' },
+  { character: '暗', pronunciation: 'kurai', meaning: 'Oscuro' },
+  { character: '白', pronunciation: 'shiro', meaning: 'Blanco' },
+  { character: '黒', pronunciation: 'kuro', meaning: 'Negro' },
+  { character: '赤', pronunciation: 'aka', meaning: 'Rojo' },
+  { character: '青', pronunciation: 'ao', meaning: 'Azul' },
+  { character: '緑', pronunciation: 'midori', meaning: 'Verde' },
+  { character: '黄', pronunciation: 'ki', meaning: 'Amarillo' },
+  { character: '空', pronunciation: 'sora', meaning: 'Cielo' },
+  { character: '海', pronunciation: 'umi', meaning: 'Mar' },
+  { character: '雨', pronunciation: 'ame', meaning: 'Lluvia' },
+  { character: '風', pronunciation: 'kaze', meaning: 'Viento' },
+  { character: '雪', pronunciation: 'yuki', meaning: 'Nieve' },
+  { character: '花', pronunciation: 'hana', meaning: 'Flor' },
+  { character: '葉', pronunciation: 'ha', meaning: 'Hoja' },
+  { character: '果', pronunciation: 'ka', meaning: 'Fruta' },
+  { character: '食', pronunciation: 'shoku', meaning: 'Comida' },
+  { character: '飲', pronunciation: 'nomu', meaning: 'Beber' },
+  { character: '休', pronunciation: 'yasumu', meaning: 'Descansar' },
+  { character: '働', pronunciation: 'hataraku', meaning: 'Trabajar' },
+  { character: '買', pronunciation: 'kau', meaning: 'Comprar' },
+  { character: '売', pronunciation: 'uru', meaning: 'Vender' },
+  { character: '書', pronunciation: 'kaku', meaning: 'Escribir' },
+  { character: '読', pronunciation: 'yomu', meaning: 'Leer' },
+  { character: '話', pronunciation: 'hanasu', meaning: 'Hablar' },
+  { character: '聞', pronunciation: 'kiku', meaning: 'Escuchar' },
+  { character: '思', pronunciation: 'omou', meaning: 'Pensar' },
+  { character: '知', pronunciation: 'shiru', meaning: 'Saber' },
+  { character: '来', pronunciation: 'kuru', meaning: 'Venir' },
+  { character: '去', pronunciation: 'saru', meaning: 'Irse' },
+  { character: '止', pronunciation: 'tomaru', meaning: 'Detener' },
+  { character: '始', pronunciation: 'hajimeru', meaning: 'Empezar' },
+  { character: '終', pronunciation: 'owaru', meaning: 'Terminar' },
+  { character: '開', pronunciation: 'hiraku', meaning: 'Abrir' },
+  { character: '閉', pronunciation: 'shimeru', meaning: 'Cerrar' },
+  { character: '会', pronunciation: 'au', meaning: 'Encontrarse' },
+  { character: '社', pronunciation: 'sha', meaning: 'Compañía' },
+  { character: '店', pronunciation: 'mise', meaning: 'Tienda' },
+  { character: '家', pronunciation: 'ie', meaning: 'Casa' },
+  { character: '門', pronunciation: 'mon', meaning: 'Puerta' },
+  { character: '口', pronunciation: 'kuchi', meaning: 'Boca' },
+  { character: '手', pronunciation: 'te', meaning: 'Mano' },
+  { character: '足', pronunciation: 'ashi', meaning: 'Pie' },
+  { character: '目', pronunciation: 'me', meaning: 'Ojo' },
+  { character: '耳', pronunciation: 'mimi', meaning: 'Oído' },
+  { character: '鼻', pronunciation: 'hana', meaning: 'Nariz' },
+  { character: '心', pronunciation: 'kokoro', meaning: 'Corazón' },
+  { character: '体', pronunciation: 'karada', meaning: 'Cuerpo' },
+  { character: '病', pronunciation: 'byou', meaning: 'Enfermedad' },
+  { character: '医', pronunciation: 'i', meaning: 'Doctor' },
+  { character: '薬', pronunciation: 'kusuri', meaning: 'Medicina' },
+  { character: '車', pronunciation: 'kuruma', meaning: 'Coche' },
+  { character: '電', pronunciation: 'den', meaning: 'Electricidad' },
+  { character: '気', pronunciation: 'ki', meaning: 'Espíritu/Aire' },
+  { character: '力', pronunciation: 'chikara', meaning: 'Fuerza' },
+  { character: '友', pronunciation: 'tomo', meaning: 'Amigo' },
+  { character: '親', pronunciation: 'oya', meaning: 'Padre/Madre' },
+  { character: '兄', pronunciation: 'ani', meaning: 'Hermano mayor' },
+  { character: '姉', pronunciation: 'ane', meaning: 'Hermana mayor' },
+  { character: '弟', pronunciation: 'otouto', meaning: 'Hermano menor' },
+  { character: '妹', pronunciation: 'imouto', meaning: 'Hermana menor' }
+];
+
+let shuffledCharacters = [];
+let currentCharacterIndex = 0;
+let score = 0;
+let errors = 0;
+
+const characterElement = document.getElementById('current-character');
+const optionsContainer = document.getElementById('options-container');
+const feedbackMessage = document.getElementById('feedback-message');
+const scoreElement = document.getElementById('score');
+const errorsElement = document.getElementById('errors');
+const restartButton = document.getElementById('restart-button');
+
+// Función para mezclar los caracteres (Fisher-Yates Shuffle)
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
+
+// Función para inicializar o reiniciar el juego
+function initializeGame() {
+  shuffledCharacters = [...allCharacters]; // Copia del arreglo original
+  shuffleArray(shuffledCharacters); // Mezcla los caracteres
+  currentCharacterIndex = 0; // Reinicia el índice
+  score = 0; // Reinicia la puntuación
+  errors = 0; // Reinicia los errores
+  scoreElement.textContent = score;
+  errorsElement.textContent = errors;
+  restartButton.classList.add('hidden'); // Oculta el botón de reinicio
+  showNextCharacter();
+}
+
+// Función para mostrar el siguiente carácter
+function showNextCharacter() {
+  if (currentCharacterIndex >= shuffledCharacters.length) {
+    // Si ya se mostraron todos los caracteres, finaliza el juego
+    endGame();
+    return;
+  }
+
+  const currentCharacterData = shuffledCharacters[currentCharacterIndex];
+  characterElement.textContent = currentCharacterData.character;
+  const options = generateOptions(currentCharacterData.pronunciation, currentCharacterData.meaning);
+  optionsContainer.innerHTML = ''; // Limpiar opciones anteriores
+
+  options.forEach(option => {
+    const button = document.createElement('button');
+    // Si hay significado, lo muestra; si no, solo muestra la pronunciación
+    button.textContent = option.meaning ? `${option.pronunciation} (${option.meaning})` : option.pronunciation;
+    button.classList.add('bg-gray-700', 'hover:bg-gray-600', 'text-white', 'font-bold', 'py-4', 'px-8', 'rounded', 'w-full', 'button-effect', 'text-xl');
+    button.addEventListener('click', () => checkAnswer(option, button));
+    optionsContainer.appendChild(button);
+  });
+
+  // Limpiar el mensaje de retroalimentación
+  feedbackMessage.textContent = '';
+  feedbackMessage.classList.add('hidden');
+  currentCharacterIndex++;
+}
+
+// Función para generar opciones de respuesta
+function generateOptions(correctPronunciation, correctMeaning) {
+  const options = [{ pronunciation: correctPronunciation, meaning: correctMeaning }];
+  while (options.length < 4) {
+    const randomOption = allCharacters[Math.floor(Math.random() * allCharacters.length)];
+    if (!options.some(option => option.pronunciation === randomOption.pronunciation && option.meaning === randomOption.meaning)) {
+      options.push({ pronunciation: randomOption.pronunciation, meaning: randomOption.meaning });
+    }
+  }
+  return options.sort(() => Math.random() - 0.5); // Mezclar opciones
+}
+
+// Función para verificar la respuesta
+function checkAnswer(selectedOption, selectedButton) {
+  const currentCharacterData = shuffledCharacters[currentCharacterIndex - 1];
+  if (selectedOption.pronunciation === currentCharacterData.pronunciation && selectedOption.meaning === currentCharacterData.meaning) {
+    score++;
+    scoreElement.textContent = score;
+    feedbackMessage.textContent = '¡Correcto!';
+    feedbackMessage.classList.remove('hidden');
+    feedbackMessage.classList.remove('text-red-500');
+    feedbackMessage.classList.add('text-green-500'); // Mensaje en verde
+    selectedButton.classList.add('bg-green-500'); // Resaltar botón correcto
+  } else {
+    errors++;
+    errorsElement.textContent = errors;
+    feedbackMessage.textContent = `Incorrecto. La respuesta correcta era "${currentCharacterData.pronunciation}${currentCharacterData.meaning ? ` (${currentCharacterData.meaning})` : ''}".`;
+    feedbackMessage.classList.remove('hidden');
+    feedbackMessage.classList.remove('text-green-500');
+    feedbackMessage.classList.add('text-red-500'); // Mensaje en rojo
+    selectedButton.classList.add('bg-red-500'); // Resaltar botón incorrecto
+  }
+
+  // Desactivar todos los botones después de responder
+  Array.from(optionsContainer.children).forEach(button => {
+    button.disabled = true;
+  });
+
+  // Mostrar el siguiente carácter después de 2 segundos
+  setTimeout(() => {
+    showNextCharacter();
+  }, 2000);
+}
+
+// Función para finalizar el juego
+function endGame() {
+  characterElement.textContent = '¡Juego Terminado!';
+  optionsContainer.innerHTML = ''; // Limpiar opciones
+  feedbackMessage.textContent = `Puntuación final: ${score}, Errores: ${errors}`;
+  feedbackMessage.classList.remove('hidden');
+  feedbackMessage.classList.add('text-yellow-500');
+  restartButton.classList.remove('hidden'); // Mostrar el botón de reinicio
+}
+
+// Evento para reiniciar el juego
+restartButton.addEventListener('click', initializeGame);
+
+// Iniciar el juego al cargar la página
+initializeGame();
+</script>
+</body>
+</html>
